@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useActionState, useState, useEffect } from 'react';
+import React, { useActionState, useState, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Mail, Lock, ArrowRight, Loader2, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { LogoCVMatch } from './components/LogoCVMatch';
@@ -11,7 +11,7 @@ import { createClient } from '@/utils/supabase/client';
 
 const initialState: AuthState = { error: '' };
 
-export default function LoginPage() {
+function LoginPage() {
   const [state, formAction, isPending] = useActionState(signInAction, initialState);
   const searchParams = useSearchParams();
 
@@ -289,5 +289,13 @@ export default function LoginPage() {
         )}
       </motion.div>
     </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-white">Carregando...</div>}>
+      <LoginPage />
+    </Suspense>
   );
 }
