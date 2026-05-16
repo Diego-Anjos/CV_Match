@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { useReactToPrint } from 'react-to-print';
 import { motion } from 'motion/react';
 import { useRouter } from 'next/navigation';
@@ -44,6 +46,7 @@ import {
   PlayCircle,
   LogOut,
   HelpCircle,
+  Info,
   Zap,
   Check,
   BarChart,
@@ -100,17 +103,17 @@ function CustomJobsView({ theme, setActiveView }: { theme: string, language?: 'p
           <Rocket className="w-20 h-20 text-emerald-500" />
         </div>
 
-        <h3 className="text-2xl font-bold text-white mb-4">
+        <h3 className={`text-2xl font-bold mb-4 ${theme === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>
           {t('newFeatureTitle')}
         </h3>
 
-        <p className="text-slate-400 max-w-lg mx-auto leading-relaxed">
+        <p className={`max-w-lg mx-auto leading-relaxed ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
           {t('aiTrainingDesc')}
         </p>
 
         <button
           onClick={() => setActiveView?.('dashboard')}
-          className="border border-slate-700 hover:bg-slate-800 text-slate-300 rounded-lg px-6 py-3 mt-8 transition-all"
+          className={`rounded-lg px-6 py-3 mt-8 transition-all border ${theme === 'dark' ? 'border-slate-700 hover:bg-slate-800 text-slate-200' : 'border-slate-300 hover:bg-slate-100 text-slate-700'}`}
         >
           {t('backToDashboard')}
         </button>
@@ -147,6 +150,8 @@ export default function CVMatchDashboard() {
         return <SettingsView theme={theme} setTheme={setTheme} language={language} setLanguage={setLanguage} setShowPlanModal={setShowPlanModal} />;
       case 'suporte':
         return <SupportView theme={theme} language={language} />;
+      case 'sobre':
+        return <AboutView theme={theme} />;
       default:
         return (
           <div className="flex-1 flex items-center justify-center p-8 h-full min-h-[60vh]">
@@ -219,9 +224,82 @@ function DashboardHomeView({ theme, setActiveView, language }: { theme: string, 
   );
 }
 
+const demoProfiles = [
+  {
+    telefone: '(11) 98765-4321',
+    cidade: 'São Paulo',
+    estado: 'SP',
+    resumo: 'Desenvolvedor Front-end Sênior com 7 anos de experiência criando interfaces performáticas e acessíveis. Especialista em React, Next.js e TypeScript, com foco em design systems e micro-frontends.',
+    experiencia: 'Itaú Unibanco | Desenvolvedor Front-end Sênior (2021 – Atual)\n- Liderou a migração de sistema legado para arquitetura micro-frontend em React, reduzindo tempo de carregamento em 45%.\n- Implementou design system interno utilizado por 15 squads.\n\nCi&T | Desenvolvedor Front-end Pleno (2019 – 2021)\n- Desenvolvimento de aplicações SPA para clientes do segmento de varejo.\n- Integração de APIs RESTful e GraphQL.',
+    formacao: 'Ciência da Computação – USP (2018)\nInglês Avançado | Espanhol Intermediário',
+    certificacoes: 'AWS Cloud Practitioner (2023)\nGoogle UX Design Certificate (2022)\nNext.js & React – The Complete Guide (Udemy, 2021)',
+    habilidades: 'React, Next.js, TypeScript, Tailwind CSS, GraphQL, Storybook, Jest, CI/CD',
+    experiencias: [
+      { cargo: 'Desenvolvedor Front-end Sênior', empresa: 'Itaú Unibanco', descricao: 'Liderou a migração de sistema legado para arquitetura micro-frontend em React, reduzindo tempo de carregamento em 45%. Implementou design system interno utilizado por 15 squads.' },
+      { cargo: 'Desenvolvedor Front-end Pleno', empresa: 'Ci&T', descricao: 'Desenvolvimento de aplicações SPA para clientes do segmento de varejo. Integração de APIs RESTful e GraphQL.' }
+    ]
+  },
+  {
+    telefone: '(21) 97654-3210',
+    cidade: 'Rio de Janeiro',
+    estado: 'RJ',
+    resumo: 'Engenheiro de Dados Pleno com sólida experiência em construção de pipelines de dados e arquiteturas em nuvem. Apaixonado por transformar grandes volumes de dados em insights estratégicos para o negócio.',
+    experiencia: 'Petrobras | Engenheiro de Dados Pleno (2022 – Atual)\n- Projetou e manteve pipelines ETL no Apache Airflow processando mais de 10TB/dia.\n- Criou dashboards analíticos no Power BI para a diretoria executiva.\n\nTotvs | Analista de Dados (2020 – 2022)\n- Modelagem de data warehouses em BigQuery.\n- Automação de relatórios com Python e SQL.',
+    formacao: 'Engenharia de Computação – PUC-Rio (2019)\nPós-graduação em Data Science – FGV (2021)',
+    certificacoes: 'Google Professional Data Engineer (2023)\nDatabricks Certified Associate Developer (2022)\nMicrosoft Azure Data Fundamentals (2021)',
+    habilidades: 'Python, SQL, Apache Spark, Airflow, BigQuery, dbt, Power BI, Kafka',
+    experiencias: [
+      { cargo: 'Engenheiro de Dados Pleno', empresa: 'Petrobras', descricao: 'Projetou e manteve pipelines ETL no Apache Airflow processando mais de 10TB/dia. Criou dashboards analíticos no Power BI para a diretoria executiva.' },
+      { cargo: 'Analista de Dados', empresa: 'Totvs', descricao: 'Modelagem de data warehouses em BigQuery. Automação de relatórios com Python e SQL.' }
+    ]
+  },
+  {
+    telefone: '(31) 96543-2109',
+    cidade: 'Belo Horizonte',
+    estado: 'MG',
+    resumo: 'UX/UI Designer com 5 anos de experiência projetando produtos digitais centrados no usuário. Especialista em pesquisa qualitativa, prototipagem em Figma e implementação de design systems escaláveis.',
+    experiencia: 'Nubank | UX Designer Sênior (2022 – Atual)\n- Conduziu pesquisas com usuários que embasaram redesign do onboarding, aumentando conversão em 28%.\n- Criou e manteve o design system "Nudds" utilizado por 30+ designers.\n\nMagazine Luiza | UX/UI Designer (2020 – 2022)\n- Redesenhou o fluxo de checkout mobile, reduzindo abandono de carrinho em 18%.\n- Colaboração direta com times de produto e engenharia em squads ágeis.',
+    formacao: 'Design Gráfico – UFMG (2019)\nCurso de UX Research – Interaction Design Foundation (2020)',
+    certificacoes: 'Google UX Design Professional Certificate (2021)\nNielsen Norman Group UX Certification (2023)\nFigma Advanced – Origamid (2022)',
+    habilidades: 'Figma, Adobe XD, Prototyping, User Research, Usability Testing, Design Systems, Accessibility',
+    experiencias: [
+      { cargo: 'UX Designer Sênior', empresa: 'Nubank', descricao: 'Conduziu pesquisas com usuários que embasaram redesign do onboarding, aumentando conversão em 28%. Criou e manteve o design system "Nudds" utilizado por 30+ designers.' },
+      { cargo: 'UX/UI Designer', empresa: 'Magazine Luiza', descricao: 'Redesenhou o fluxo de checkout mobile, reduzindo abandono de carrinho em 18%. Colaboração direta com times de produto e engenharia em squads ágeis.' }
+    ]
+  },
+  {
+    telefone: '(41) 95432-1098',
+    cidade: 'Curitiba',
+    estado: 'PR',
+    resumo: 'Gerente de Projetos de TI com certificação PMP e 8 anos de experiência liderando projetos de transformação digital em grandes corporações. Especialista em metodologias ágeis (Scrum e SAFe) e gestão de stakeholders.',
+    experiencia: 'Ambev | Gerente de Projetos de TI (2020 – Atual)\n- Gerenciou portfólio de 12 projetos simultâneos com orçamento total de R$ 8M.\n- Implementou metodologia SAFe em 4 squads, aumentando a velocidade de entrega em 35%.\n\nAccenture | Analista de Projetos Sênior (2017 – 2020)\n- Coordenação de projetos de migração para cloud em clientes do setor bancário.\n- Gestão de equipes multiculturais com membros no Brasil, EUA e Índia.',
+    formacao: 'Sistemas de Informação – UTFPR (2016)\nMBA em Gestão de Projetos – FIA (2019)',
+    certificacoes: 'PMP – Project Management Professional (2020)\nPSM I – Professional Scrum Master (2018)\nSAFe 5 Agilist (2021)',
+    habilidades: 'Scrum, SAFe, Kanban, MS Project, Jira, Power BI, Gestão de Riscos, PMBOK',
+    experiencias: [
+      { cargo: 'Gerente de Projetos de TI', empresa: 'Ambev', descricao: 'Gerenciou portfólio de 12 projetos simultâneos com orçamento total de R$ 8M. Implementou metodologia SAFe em 4 squads, aumentando a velocidade de entrega em 35%.' },
+      { cargo: 'Analista de Projetos Sênior', empresa: 'Accenture', descricao: 'Coordenação de projetos de migração para cloud em clientes do setor bancário. Gestão de equipes multiculturais com membros no Brasil, EUA e Índia.' }
+    ]
+  },
+  {
+    telefone: '(51) 94321-0987',
+    cidade: 'Porto Alegre',
+    estado: 'RS',
+    resumo: 'Desenvolvedor Backend .NET com 6 anos de experiência construindo APIs robustas e microsserviços de alta disponibilidade. Especialista em C#, ASP.NET Core e arquitetura orientada a eventos com Kafka e RabbitMQ.',
+    experiencia: 'TOTVS | Desenvolvedor Backend Sênior .NET (2021 – Atual)\n- Arquitetou plataforma de microsserviços em ASP.NET Core que suporta 2M de requisições/dia.\n- Liderou migração de monolito para arquitetura de eventos com Apache Kafka.\n\nDell Technologies | Desenvolvedor .NET Pleno (2019 – 2021)\n- Desenvolveu APIs RESTful integradas a sistemas SAP para automação de supply chain.\n- Implementação de testes unitários e de integração com xUnit, atingindo 85% de cobertura.',
+    formacao: 'Engenharia de Software – PUCRS (2018)\nInglês Fluente',
+    certificacoes: 'Microsoft Certified: Azure Developer Associate (2022)\nMicrosoft Certified: .NET Developer (2021)\nDocker & Kubernetes – LinuxTips (2020)',
+    habilidades: 'C#, ASP.NET Core, Entity Framework, SQL Server, Docker, Kubernetes, Kafka, RabbitMQ, Azure',
+    experiencias: [
+      { cargo: 'Desenvolvedor Backend Sênior .NET', empresa: 'TOTVS', descricao: 'Arquitetou plataforma de microsserviços em ASP.NET Core que suporta 2M de requisições/dia. Liderou migração de monolito para arquitetura de eventos com Apache Kafka.' },
+      { cargo: 'Desenvolvedor .NET Pleno', empresa: 'Dell Technologies', descricao: 'Desenvolveu APIs RESTful integradas a sistemas SAP para automação de supply chain. Implementação de testes unitários e de integração com xUnit, atingindo 85% de cobertura.' }
+    ]
+  }
+];
+
 function NewOptimizationView({ theme, setActiveView, language, setGeneratedCvData }: { theme: string, setActiveView: (v: string) => void, language: 'pt' | 'en', setGeneratedCvData: (data: any) => void }) {
   const t = translations[language];
-  const { canGenerateCv, addCreditUsage, user } = useUser();
+  const { canGenerateCv, addCreditUsage, refreshUsage, user } = useUser();
   const [baseCv, setBaseCv] = useState({
     nome: '',
     email: '',
@@ -240,34 +318,25 @@ function NewOptimizationView({ theme, setActiveView, language, setGeneratedCvDat
   const [jobTitle, setJobTitle] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showResults, setShowResults] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<IAAnalysisData | null>(null);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   const handleDemoFill = () => {
+    const randomProfile = demoProfiles[Math.floor(Math.random() * demoProfiles.length)];
+    const userName = user?.nome?.trim() || (language === 'pt' ? 'Profissional' : 'Professional');
+    const userEmail = user?.email?.trim() || (language === 'pt' ? 'usuario@exemplo.com' : 'user@example.com');
     setBaseCv({
-      nome: 'Diego dos Anjos',
-      email: 'diego.anjos@exemplo.com',
-      telefone: '(11) 99999-9999',
-      cidade: 'São Paulo',
-      estado: 'SP',
-      resumo: 'Desenvolvedor Front-end apaixonado por criar interfaces de usuário intuitivas e performáticas. Especialista em React, Next.js e ecossistema JavaScript. Foco em acessibilidade e clean code.',
-      experiencia: 'Tech Solutions Inc. | Desenvolvedor Front-end Sênior (2022 – Atual)\n- Liderou migração do sistema legado para React, melhorando performance em 40%.\n- Implementou design system com Tailwind CSS.\n\nAgência Digital | Desenvolvedor Web Pleno (2020 – 2022)\n- Desenvolvimento de landing pages de alta conversão e e-commerces.\n- Integração com APIs RESTful e CMS headless.',
-      formacao: 'Análise e Desenvolvimento de Sistemas – FATEC (Concluído, 2020)\nInglês Avançado | Espanhol Básico',
-      certificacoes: 'AWS Cloud Practitioner (2023)\nNext.js & React – The Complete Guide (Udemy, 2022)\nBootcamp Front-end – DIO (2021)',
-      habilidades: 'React, Next.js, TypeScript, Tailwind CSS, Node.js',
-      experiencias: [
-        {
-          cargo: 'Desenvolvedor Front-end Sênior',
-          empresa: 'Tech Solutions Inc.',
-          descricao: 'Liderou a migração do sistema legado para React, melhorando a performance em 40%. Implementou design system utilizando Tailwind CSS.'
-        },
-        {
-          cargo: 'Desenvolvedor Web Pleno',
-          empresa: 'Agência Digital',
-          descricao: 'Desenvolvimento de landing pages de alta conversão e e-commerces. Integração com APIs RESTful e CMS headless.'
-        }
-      ]
+      nome: userName,
+      email: userEmail,
+      telefone: randomProfile.telefone,
+      cidade: randomProfile.cidade,
+      estado: randomProfile.estado,
+      resumo: randomProfile.resumo,
+      experiencia: randomProfile.experiencia,
+      formacao: randomProfile.formacao,
+      certificacoes: randomProfile.certificacoes,
+      habilidades: randomProfile.habilidades,
+      experiencias: randomProfile.experiencias,
     });
   };
 
@@ -284,17 +353,48 @@ function NewOptimizationView({ theme, setActiveView, language, setGeneratedCvDat
     setBaseCv({ ...baseCv, experiencias: newExperiences });
   };
 
+  /**
+   * Returns true when the text contains enough real content to be sent to the AI.
+   * Requires at least `minLength` non-whitespace characters AND at least
+   * `minWords` "word" segments that each contain 2+ consecutive letters.
+   */
+  const isValidJobInput = (text: string, minLength: number, minWords = 1): boolean => {
+    const trimmed = text.trim();
+    if (trimmed.length < minLength) return false;
+    const realWords = trimmed
+      .split(/\s+/)
+      .filter((w) => /[a-záàâãéèêíïóôõöúüçña-z]{2,}/i.test(w));
+    return realWords.length >= minWords;
+  };
+
   const handleAnalyze = async () => {
     if (!canGenerateCv) {
+      toast.warning(t.freePlanLimitReached, { duration: 6000 });
       setIsUpgradeModalOpen(true);
       return;
     }
 
     if (!baseCv.nome || !jobDescription.trim()) {
-      setError(t.fillRequiredFields);
+      toast.error(t.fillRequiredFields);
       return;
     }
-    setError(null);
+
+    if (jobTitle && !isValidJobInput(jobTitle, 4, 1)) {
+      toast.warning(
+        'Por favor, insira um nome de vaga válido ou forneça mais detalhes sobre a oportunidade para que a IA faça uma análise precisa.',
+        { duration: 6000 }
+      );
+      return;
+    }
+
+    if (!isValidJobInput(jobDescription, 20, 3)) {
+      toast.warning(
+        'Por favor, descreva a vaga com mais detalhes (mínimo de 3 palavras e 20 caracteres) para que a IA faça uma análise precisa.',
+        { duration: 6000 }
+      );
+      return;
+    }
+
     setIsAnalyzing(true);
 
     try {
@@ -316,6 +416,17 @@ function NewOptimizationView({ theme, setActiveView, language, setGeneratedCvDat
       }
 
       const data = await response.json();
+
+      // AI or server detected the job input as invalid / gibberish
+      if (data.error === true) {
+        toast.warning(
+          data.message ||
+            'Não conseguimos identificar a vaga informada. Por favor, forneça mais detalhes ou o nome correto do cargo.',
+          { duration: 7000 }
+        );
+        return;
+      }
+
       setAnalysisResult(data);
 
       // Build the CV data object from the user's own input so the Templates
@@ -367,13 +478,15 @@ function NewOptimizationView({ theme, setActiveView, language, setGeneratedCvDat
             match_score: data.matchScore,
             analysis_data: data,
           });
+          // Sync the real usage count from Supabase so the modal reflects the updated value immediately
+          await refreshUsage();
         }
       } catch (saveErr) {
         console.error('[handleAnalyze] Erro ao salvar análise no Supabase:', saveErr);
       }
     } catch (err: any) {
       console.error('[handleAnalyze]', err);
-      setError(err.message || t.analysisError);
+      toast.error(getErrorMessage(err.message) || t.analysisError);
     } finally {
       setIsAnalyzing(false);
     }
@@ -500,13 +613,6 @@ function NewOptimizationView({ theme, setActiveView, language, setGeneratedCvDat
         <h2 className={`text-2xl md:text-3xl font-display font-bold mb-6 ${theme === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>
           {t.step1Title}
         </h2>
-
-        {error && (
-          <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 border ${theme === 'dark' ? 'bg-red-900/20 border-red-800/50 text-red-400' : 'bg-red-50 border-red-200 text-red-600'}`}>
-            <AlertCircle className="w-5 h-5 shrink-0" />
-            <p className="font-medium">{error}</p>
-          </div>
-        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           {/* Lado Esquerdo - Seu Currículo */}
@@ -858,7 +964,7 @@ function AnalysisView({ theme, setActiveView, language }: { theme: string, setAc
 
     } catch (error) {
       console.error(error);
-      alert("Ocorreu um erro ao gerar a análise da IA. Tente novamente.");
+      toast.error('Não foi possível analisar o currículo no momento. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
@@ -2049,7 +2155,7 @@ function TemplatesView({ theme, setActiveView, language, selectedTemplate, setSe
               <h3 className="text-white font-bold text-lg">Preview</h3>
               <div className="flex gap-3">
                 <button
-                  onClick={() => window.print()}
+                  onClick={() => handleDownloadPdf()}
                   className="bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition-colors"
                 >
                   <Download className="w-4 h-4" />
@@ -2069,7 +2175,7 @@ function TemplatesView({ theme, setActiveView, language, selectedTemplate, setSe
             <div className="p-8 flex-1 flex justify-center print:p-0 print:block print:flex-none">
               <div
                 ref={cvRef}
-                className="w-full max-w-[210mm] min-h-[297mm] bg-white text-black p-12 shadow-2xl print:w-[210mm] print:min-h-[297mm] print:m-0 print:p-8 print:shadow-none print:border-none print:absolute print:top-0 print:left-0"
+                className="w-full max-w-[210mm] min-h-[297mm] bg-white text-black p-12 shadow-2xl print:w-full print:min-h-0 print:m-0 print:p-8 print:shadow-none print:border-none"
                 style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}
               >
                 {renderTemplate()}
@@ -2373,6 +2479,7 @@ function Sidebar({ activeView, setActiveView, language }: { activeView: string, 
       }, 2000);
     } catch (err) {
       console.error('[Sidebar] Erro ao salvar perfil:', err);
+      toast.error('Não foi possível salvar o perfil. Tente novamente.');
     } finally {
       setIsSaving(false);
     }
@@ -2424,6 +2531,12 @@ function Sidebar({ activeView, setActiveView, language }: { activeView: string, 
           label={t.navSettings} 
           active={activeView === 'configuracoes'} 
           onClick={() => setActiveView('configuracoes')} 
+        />
+        <NavItem 
+          icon={<Info />} 
+          label={t.navSobre} 
+          active={activeView === 'sobre'} 
+          onClick={() => setActiveView('sobre')} 
         />
       </nav>
       
@@ -2498,7 +2611,7 @@ function Sidebar({ activeView, setActiveView, language }: { activeView: string, 
             className="bg-slate-800 border border-slate-700 rounded-2xl shadow-xl w-full max-w-md overflow-hidden"
           >
             <div className="flex items-center justify-between p-4 border-b border-slate-700">
-              <h2 className="text-lg font-bold text-white">Configurações da Conta</h2>
+              <h2 className="text-lg font-bold text-white">{t.settingsTitle}</h2>
               <button 
                 onClick={() => setShowProfileSettings(false)}
                 className="p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
@@ -2535,12 +2648,12 @@ function Sidebar({ activeView, setActiveView, language }: { activeView: string, 
                   <div className="h-4 w-32 bg-slate-700 rounded animate-pulse" />
                   <div className="h-11 bg-slate-700 rounded-xl animate-pulse" />
                 </div>
-                <p className="text-center text-xs text-slate-500 pt-1">Carregando dados do perfil...</p>
+                <p className="text-center text-xs text-slate-500 pt-1">{t.loadingProfile}</p>
               </div>
             ) : (
               <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300 block">Nome de Exibição</label>
+                  <label className="text-sm font-medium text-slate-300 block">{t.displayName}</label>
                   <input 
                     type="text" 
                     value={tempName}
@@ -2549,7 +2662,7 @@ function Sidebar({ activeView, setActiveView, language }: { activeView: string, 
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300 block">E-mail de Cadastro</label>
+                  <label className="text-sm font-medium text-slate-300 block">{t.registrationEmail}</label>
                   <input 
                     type="email" 
                     value={tempEmail}
@@ -2561,7 +2674,7 @@ function Sidebar({ activeView, setActiveView, language }: { activeView: string, 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                      <Phone className="w-4 h-4" /> Telefone / WhatsApp
+                      <Phone className="w-4 h-4" /> {t.phone} / WhatsApp
                     </label>
                     <input 
                       type="text" 
@@ -2574,7 +2687,7 @@ function Sidebar({ activeView, setActiveView, language }: { activeView: string, 
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                      <MapPin className="w-4 h-4" /> Localização
+                      <MapPin className="w-4 h-4" /> {t.location}
                     </label>
                     <input 
                       type="text" 
@@ -2601,7 +2714,7 @@ function Sidebar({ activeView, setActiveView, language }: { activeView: string, 
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                    <Globe className="w-4 h-4" /> Portfólio / GitHub
+                      <Globe className="w-4 h-4" /> {t.portfolioSite} / GitHub
                   </label>
                   <input 
                     type="url" 
@@ -2616,7 +2729,7 @@ function Sidebar({ activeView, setActiveView, language }: { activeView: string, 
             <div className="p-4 border-t border-slate-700 flex flex-col gap-3">
               {showSuccess && (
                 <div className="flex items-center gap-2 text-emerald-400 text-sm font-medium bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-3 py-2">
-                  ✅ Perfil atualizado com sucesso!
+                  ✅ {t.profileUpdated}
                 </div>
               )}
               <div className="flex justify-end gap-3">
@@ -2624,14 +2737,14 @@ function Sidebar({ activeView, setActiveView, language }: { activeView: string, 
                   onClick={() => setShowProfileSettings(false)}
                   className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors"
                 >
-                  Cancelar
+                  {t.cancel}
                 </button>
                 <button 
                   onClick={handleSaveProfile}
                   disabled={isSaving || showSuccess || isLoadingProfile}
                   className="px-4 py-2 text-sm font-medium bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed text-slate-900 rounded-xl transition-colors"
                 >
-                  {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+                  {isSaving ? t.saving : t.saveChanges}
                 </button>
               </div>
             </div>
@@ -2671,6 +2784,8 @@ function Header({ activeView, theme, language }: { activeView: string, theme: st
       case 'banco': return t.titleTalentPool;
       case 'analises': return t.titleAiAnalyses;
       case 'configuracoes': return t.titleSettings;
+      case 'suporte': return t.titleSupport;
+      case 'sobre': return t.titleSobre;
       default: return t.titleHome;
     }
   };
@@ -2682,7 +2797,7 @@ function Header({ activeView, theme, language }: { activeView: string, theme: st
         {activeView === 'analises' && (
           <>
             <ChevronRight className="w-4 h-4" />
-            <span className={`font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-slate-900'}`}>Desenvolvedor Front-end Sênior</span>
+            <span className={`font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-slate-900'}`}>{t.breadcrumbAiAnalysesSubtitle}</span>
           </>
         )}
       </div>
@@ -2696,7 +2811,7 @@ function Header({ activeView, theme, language }: { activeView: string, theme: st
 
 function SettingsView({ theme, setTheme, language, setLanguage, setShowPlanModal }: { theme: string, setTheme: (v: string) => void, language: 'pt' | 'en', setLanguage: (v: 'pt' | 'en') => void, setShowPlanModal: (v: boolean) => void }) {
   const t = translations[language];
-  const { user, isPro, cancelSubscription } = useUser();
+  const { user, isPro, cancelSubscription, isLoadingProfile, updateUser } = useUser();
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [upgradeModalStep, setUpgradeModalStep] = useState<'plans' | 'payment'>('plans');
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
@@ -2746,48 +2861,26 @@ function SettingsView({ theme, setTheme, language, setLanguage, setShowPlanModal
       }
     } catch (err) {
       console.error('Erro ao atualizar senha:', err);
-      setPasswordError('Ocorreu um erro inesperado. Tente novamente.');
+      const msg = 'Ocorreu um erro inesperado. Tente novamente.';
+      setPasswordError(msg);
+      toast.error(msg);
     } finally {
       setIsUpdatingPassword(false);
     }
   };
 
+  // Seed form fields from the global UserContext (already fetched from Supabase).
+  // Runs whenever the profile finishes loading or the user object changes,
+  // eliminating the race condition of an isolated getUser() call on mount.
   useEffect(() => {
-    const loadUserProfile = async () => {
-      try {
-        const supabase = createClient();
-        const { data: { user: sbUser } } = await supabase.auth.getUser();
-
-        if (sbUser) {
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', sbUser.id)
-            .single();
-
-          if (profile) {
-            setNome(profile.full_name || sbUser.user_metadata?.full_name || sbUser.email || '');
-            setTelefone(profile.phone || '');
-            setCidadeEstado(profile.location || '');
-            setLinkedin(profile.linkedin_url || '');
-            setPortfolio(profile.portfolio_url || '');
-          } else {
-            // Fallback se o usuário acabou de criar a conta e o perfil ainda não existe
-            setNome(sbUser.user_metadata?.full_name || sbUser.email || '');
-          }
-
-          if (error && error.code !== 'PGRST116') {
-            console.error('[SettingsView] Erro ao carregar perfil:', error);
-          }
-        }
-      } catch (err) {
-        console.error('[SettingsView] Erro ao carregar perfil:', err);
-      }
-    };
-
-    loadUserProfile();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (!isLoadingProfile && user) {
+      setNome(user.nome || '');
+      setTelefone(user.telefone || '');
+      setCidadeEstado(user.cidadeEstado || '');
+      setLinkedin(user.linkedin || '');
+      setPortfolio(user.portfolio || '');
+    }
+  }, [isLoadingProfile, user]);
 
   const handleSaveProfile = async () => {
     console.log("CLIQUEI NO BOTAO AGORA");
@@ -2811,12 +2904,18 @@ function SettingsView({ theme, setTheme, language, setLanguage, setShowPlanModal
         console.error('Erro ao salvar perfil:', error);
         throw error;
       }
+
+      // Keep the global context in sync so Sidebar and other consumers
+      // reflect the new values without needing a full page refresh.
+      updateUser({ nome, telefone, cidadeEstado, linkedin, portfolio });
+
       setShowSuccess(true);
       setTimeout(() => {
         setShowSuccess(false);
       }, 3000);
     } catch (err) {
       console.error('[SettingsView] Erro ao salvar perfil:', err);
+      toast.error('Não foi possível salvar as configurações. Tente novamente.');
     } finally {
       setIsSaving(false);
     }
@@ -3233,8 +3332,7 @@ function SupportView({ theme, language }: { theme: string, language: 'pt' | 'en'
       setShowSuccessModal(true);
     } catch (err: unknown) {
       console.error('Erro ao enviar ticket de suporte:', err);
-      const msg = err instanceof Error ? err.message : String(err);
-      alert('Não foi possível enviar sua mensagem. Tente novamente em instantes.\n\nDetalhe: ' + msg);
+      toast.error('Não foi possível enviar sua mensagem. Tente novamente em instantes.');
     } finally {
       setIsSubmitting(false);
     }
@@ -3424,6 +3522,180 @@ function SupportView({ theme, language }: { theme: string, language: 'pt' | 'en'
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function AboutView({ theme }: { theme: string }) {
+  const { t } = useLanguage();
+
+  const isDark = theme === 'dark';
+
+  const teamMembers = [
+    { name: 'Diego dos Anjos',   avatar: 'D', color: 'bg-emerald-600' },
+    { name: 'Gustavo Ribeiro',   avatar: 'G', color: 'bg-sky-600'     },
+    { name: 'Ian Meirelles',     avatar: 'I', color: 'bg-violet-600'  },
+  ];
+
+  const techStack = [
+    { name: 'Next.js 15', icon: '▲', color: 'text-white' },
+    { name: 'React 19', icon: '⚛', color: 'text-sky-400' },
+    { name: 'TypeScript', icon: 'TS', color: 'text-blue-400' },
+    { name: 'Tailwind CSS', icon: '🎨', color: 'text-cyan-400' },
+    { name: 'Supabase', icon: '⚡', color: 'text-emerald-400' },
+    { name: 'Google Gemini AI', icon: '✦', color: 'text-violet-400' },
+  ];
+
+  const steps = [
+    { icon: <FileSearch className="w-6 h-6" />, title: t('aboutStep1Title'), desc: t('aboutStep1Desc'), color: 'text-emerald-400', bg: isDark ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-emerald-50 border-emerald-200' },
+    { icon: <BrainCircuit className="w-6 h-6" />, title: t('aboutStep2Title'), desc: t('aboutStep2Desc'), color: 'text-violet-400', bg: isDark ? 'bg-violet-500/10 border-violet-500/20' : 'bg-violet-50 border-violet-200' },
+    { icon: <Rocket className="w-6 h-6" />, title: t('aboutStep3Title'), desc: t('aboutStep3Desc'), color: 'text-amber-400', bg: isDark ? 'bg-amber-500/10 border-amber-500/20' : 'bg-amber-50 border-amber-200' },
+  ];
+
+  return (
+    <div className={`max-w-3xl mx-auto space-y-8 pb-16 px-1`}>
+
+      {/* Hero */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <div className={`rounded-2xl border p-8 text-center ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-slate-200 shadow-sm'}`}>
+          <div className="flex justify-center mb-4">
+            <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+              <LogoCVMatch className="w-9 h-9 text-emerald-500" />
+            </div>
+          </div>
+          <h1 className={`text-3xl font-display font-bold tracking-tight mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            CV Match
+          </h1>
+          <p className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            {t('aboutTagline')}
+          </p>
+          <div className="mt-4 flex items-center justify-center gap-2">
+            <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${isDark ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-200'}`}>
+              {t('aboutVersionLabel')} 1.0.0
+            </span>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* What is CV Match */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+        <div className={`rounded-2xl border p-6 ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-slate-200 shadow-sm'}`}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDark ? 'bg-sky-500/10' : 'bg-sky-50'}`}>
+              <Info className="w-4 h-4 text-sky-400" />
+            </div>
+            <h2 className={`text-lg font-display font-bold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+              {t('aboutWhatIsTitle')}
+            </h2>
+          </div>
+          <p className={`text-sm leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+            {t('aboutWhatIsDesc')}
+          </p>
+        </div>
+      </motion.div>
+
+      {/* How it works */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+        <div className={`rounded-2xl border p-6 ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-slate-200 shadow-sm'}`}>
+          <div className="flex items-center gap-3 mb-5">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDark ? 'bg-emerald-500/10' : 'bg-emerald-50'}`}>
+              <Sparkles className="w-4 h-4 text-emerald-400" />
+            </div>
+            <h2 className={`text-lg font-display font-bold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+              {t('aboutHowItWorksTitle')}
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {steps.map((step, i) => (
+              <div key={i} className={`rounded-xl border p-4 flex flex-col gap-3 ${step.bg}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-white shadow-sm'} ${step.color}`}>
+                  {step.icon}
+                </div>
+                <div>
+                  <p className={`text-sm font-semibold mb-1 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{step.title}</p>
+                  <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{step.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Mission */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+        <div className={`rounded-2xl border p-6 ${isDark ? 'bg-gradient-to-br from-emerald-900/30 to-slate-800/60 border-emerald-800/40' : 'bg-gradient-to-br from-emerald-50 to-white border-emerald-200 shadow-sm'}`}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDark ? 'bg-emerald-500/20' : 'bg-emerald-100'}`}>
+              <Target className="w-4 h-4 text-emerald-500" />
+            </div>
+            <h2 className={`text-lg font-display font-bold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+              {t('aboutMissionTitle')}
+            </h2>
+          </div>
+          <p className={`text-sm leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+            {t('aboutMissionDesc')}
+          </p>
+        </div>
+      </motion.div>
+
+      {/* Tech Stack */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+        <div className={`rounded-2xl border p-6 ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-slate-200 shadow-sm'}`}>
+          <div className="flex items-center gap-3 mb-5">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDark ? 'bg-violet-500/10' : 'bg-violet-50'}`}>
+              <Zap className="w-4 h-4 text-violet-400" />
+            </div>
+            <h2 className={`text-lg font-display font-bold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+              {t('aboutTechStackTitle')}
+            </h2>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {techStack.map((tech) => (
+              <span
+                key={tech.name}
+                className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border ${
+                  isDark
+                    ? 'bg-slate-700/60 border-slate-600 text-slate-300'
+                    : 'bg-slate-50 border-slate-200 text-slate-600'
+                }`}
+              >
+                <span className={tech.color}>{tech.icon}</span>
+                {tech.name}
+              </span>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Team */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+        <div className={`rounded-2xl border p-6 ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-slate-200 shadow-sm'}`}>
+          <div className="flex items-center gap-3 mb-5">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDark ? 'bg-amber-500/10' : 'bg-amber-50'}`}>
+              <Star className="w-4 h-4 text-amber-400" />
+            </div>
+            <h2 className={`text-lg font-display font-bold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+              {t('aboutTeamTitle')}
+            </h2>
+          </div>
+          <div className="space-y-3">
+            {teamMembers.map((member) => (
+              <div
+                key={member.name}
+                className={`flex items-center gap-4 p-4 rounded-xl border ${
+                  isDark ? 'bg-slate-700/40 border-slate-600' : 'bg-slate-50 border-slate-200'
+                }`}
+              >
+                <div className={`w-11 h-11 rounded-full ${member.color} flex items-center justify-center text-white font-bold text-base shrink-0`}>
+                  {member.avatar}
+                </div>
+                <p className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{member.name}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+
     </div>
   );
 }

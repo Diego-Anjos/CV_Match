@@ -32,19 +32,19 @@ export function CancelSubscriptionModal({ isOpen, onClose, onConfirm }: CancelSu
             <div className="w-5 h-5 rounded-full border border-gray-600 flex items-center justify-center shrink-0">
               <Minus className="w-3 h-3 text-gray-400" />
             </div>
-            <span className="text-gray-300 text-sm">Otimizações ilimitadas de IA</span>
+            <span className="text-gray-300 text-sm">Acesso antecipado ao &apos;Oportunidades sob Medida&apos;</span>
           </li>
           <li className="flex items-center gap-3">
             <div className="w-5 h-5 rounded-full border border-gray-600 flex items-center justify-center shrink-0">
               <Minus className="w-3 h-3 text-gray-400" />
             </div>
-            <span className="text-gray-300 text-sm">Acesso às Análises de IA e Recomendações de Cursos</span>
+            <span className="text-gray-300 text-sm">Análises de currículo com IA sem limite diário</span>
           </li>
           <li className="flex items-center gap-3">
             <div className="w-5 h-5 rounded-full border border-gray-600 flex items-center justify-center shrink-0">
               <Minus className="w-3 h-3 text-gray-400" />
             </div>
-            <span className="text-gray-300 text-sm">Acesso aos 5 Templates Premium</span>
+            <span className="text-gray-300 text-sm">Templates premium aprovados por sistemas ATS</span>
           </li>
         </ul>
 

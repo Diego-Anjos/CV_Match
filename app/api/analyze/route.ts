@@ -19,7 +19,35 @@ export async function POST(request: Request) {
     console.log('[API_ANALYZE] Payload recebido:', { temCV: !!baseCv, temVaga: !!jobDescription, userName });
     console.log('[DEBUG] Iniciando IA com a chave:', process.env.GEMINI_API_KEY?.substring(0, 15) + '...');
 
+    // Server-side guard: reject obviously invalid inputs before spending any API quota
+    const hasRealContent = (text: string, minLen: number, minWords: number) => {
+      const trimmed = (text || '').trim();
+      if (trimmed.length < minLen) return false;
+      const realWords = trimmed
+        .split(/\s+/)
+        .filter((w) => /[a-záàâãéèêíïóôõöúüçña-z]{2,}/i.test(w));
+      return realWords.length >= minWords;
+    };
+
+    if (!hasRealContent(jobDescription, 20, 3)) {
+      console.warn('[API_ANALYZE] Descrição da vaga rejeitada pela validação do servidor.');
+      return NextResponse.json(
+        {
+          error: true,
+          message:
+            'Não conseguimos identificar a vaga informada. Por favor, forneça mais detalhes ou o nome correto do cargo para que possamos gerar sua análise.',
+        },
+        { status: 200 }
+      );
+    }
+
     const systemInstruction = `
+INSTRUÇÃO PRIORITÁRIA — VALIDAÇÃO DE ENTRADA:
+Antes de qualquer análise, avalie se o título da vaga e a descrição fornecidos pelo usuário são compreensíveis e fazem sentido no contexto profissional.
+SE o título da vaga ou a descrição for incompreensível, contiver apenas caracteres aleatórios (ex: "ayta", "asdasd", "xzxzxz"), repetições sem sentido ou claramente não representar um cargo ou oportunidade de trabalho real, retorne IMEDIATAMENTE e EXCLUSIVAMENTE este JSON, sem mais nada:
+{"error": true, "message": "Não conseguimos identificar a vaga informada. Por favor, forneça mais detalhes ou o nome correto do cargo para que possamos gerar sua análise."}
+Somente prossiga com a análise completa abaixo se a entrada fizer sentido profissional.
+
 Você é um Headhunter Sênior e Especialista em Carreira com foco em RH Digital. Sua missão é analisar a compatibilidade de um currículo com uma vaga de emprego.
 
 DIRETRIZES DE PERSONALIZAÇÃO:

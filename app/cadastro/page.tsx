@@ -1,16 +1,22 @@
 'use client';
 
-import React, { useActionState } from 'react';
+import React, { useActionState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Mail, Lock, ArrowRight, User, Loader2 } from 'lucide-react';
 import { LogoCVMatch } from '../components/LogoCVMatch';
 import Link from 'next/link';
 import { signUpAction, type AuthState } from '@/app/actions/auth';
+import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 const initialState: AuthState = { error: '' };
 
 export default function CadastroPage() {
   const [state, formAction, isPending] = useActionState(signUpAction, initialState);
+
+  useEffect(() => {
+    if (state.error) toast.error(getErrorMessage(state.error));
+  }, [state.error]);
 
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-sans relative overflow-hidden">
@@ -30,7 +36,7 @@ export default function CadastroPage() {
           <div className="flex flex-col items-center mb-8">
             <LogoCVMatch className="w-16 h-16 text-emerald-500 mb-4" />
             <h1 className="text-2xl font-display font-bold text-slate-900 tracking-tight">Criar Conta</h1>
-            <p className="text-slate-500 text-sm mt-1 text-center">Junte-se ao CV Match e otimize seu recrutamento</p>
+            <p className="text-slate-500 text-sm mt-1 text-center">Otimize seu currículo com IA e conquiste a vaga ideal.</p>
           </div>
 
           {/* Form */}
@@ -112,10 +118,6 @@ export default function CadastroPage() {
                 .
               </label>
             </div>
-
-            {state.error && (
-              <p className="text-sm text-red-500 font-medium">{state.error}</p>
-            )}
 
             <button
               type="submit"

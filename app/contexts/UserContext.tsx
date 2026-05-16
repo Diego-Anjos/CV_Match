@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { type User as SupabaseUser } from '@supabase/supabase-js';
 import { createClient } from '@/utils/supabase/client';
@@ -95,6 +95,7 @@ interface UserContextType {
   supabaseUserId: string | null;
   updateUser: (newData: Partial<User>) => void;
   addCreditUsage: () => void;
+  refreshUsage: () => Promise<void>;
   isLoaded: boolean;
   isLoadingProfile: boolean;
   logout: () => Promise<void>;
@@ -112,7 +113,10 @@ interface UserContextType {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  const supabase = createClient();
+  // Stable reference — createBrowserClient is a singleton internally, but the
+  // ref prevents accidental recreation on re-renders that would break the
+  // onAuthStateChange listener closure.
+  const supabase = useRef(createClient()).current;
   const router = useRouter();
 
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
@@ -132,19 +136,41 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Returns the start of the current calendar month as an ISO string for Supabase queries.
+  const getStartOfMonth = () => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  };
+
   // Fetch profile data from Supabase and merge it into user state.
   // This is the authoritative source for display fields (name, phone, linkedin, etc.)
   // and prevents the race condition where localStorage is stale or empty after a fresh login.
+  // Also fetches the real usage count for the current month from the analyses table.
   const fetchUserProfile = useCallback(async (sbUser: SupabaseUser) => {
     setIsLoadingProfile(true);
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('full_name, phone, location, linkedin_url, portfolio_url')
-        .eq('id', sbUser.id)
-        .maybeSingle();
+      const [profileResult, usageResult] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('full_name, phone, location, linkedin_url, portfolio_url')
+          .eq('id', sbUser.id)
+          .maybeSingle(),
+        supabase
+          .from('analyses')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', sbUser.id)
+          .gte('created_at', getStartOfMonth()),
+      ]);
+
+      const profile = profileResult.data;
+      const usageCount = usageResult.count ?? null;
 
       const stored = loadStoredUserData(sbUser.id);
+
+      // Sync localStorage with the authoritative Supabase count
+      if (usageCount !== null) {
+        saveStoredUserData(sbUser.id, { ...stored, creditosUsados: usageCount });
+      }
 
       // Build the merged user: profile DB fields take priority over metadata fallbacks
       const mergedUser: User = {
@@ -155,7 +181,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         linkedin: (profile?.linkedin_url as string) || stored.linkedin,
         portfolio: (profile?.portfolio_url as string) || stored.portfolio,
         plano: stored.plano,
-        creditosUsados: stored.creditosUsados,
+        creditosUsados: usageCount !== null ? usageCount : stored.creditosUsados,
         creditosTotais: stored.creditosTotais,
         dataRenovacao: stored.dataRenovacao,
         cicloFaturamento: stored.cicloFaturamento,
@@ -259,8 +285,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         const stored = loadStoredUserData(sbUser.id);
         setUser(buildUser(sbUser, stored));
         loadHistory(sbUser.id);
-        // On SIGNED_IN and INITIAL_SESSION fetch fresh profile from Supabase
-        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+        // Fetch fresh profile on login, initial load, or token renewal
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
           fetchUserProfile(sbUser);
         }
         syncSubscriptionFromSupabase(sbUser);
@@ -305,6 +331,26 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const addCreditUsage = useCallback(() => {
     updateUser({ creditosUsados: (user?.creditosUsados ?? 0) + 1 });
   }, [updateUser, user?.creditosUsados]);
+
+  // Re-queries the analyses count for the current month from Supabase
+  // and syncs creditosUsados in state + localStorage. Call this after a
+  // successful analysis insert to keep the modal counter accurate immediately.
+  const refreshUsage = useCallback(async () => {
+    if (!supabaseUser) return;
+    try {
+      const { count } = await supabase
+        .from('analyses')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', supabaseUser.id)
+        .gte('created_at', getStartOfMonth());
+      if (count !== null) {
+        updateUser({ creditosUsados: count });
+      }
+    } catch {
+      // Non-blocking — the optimistic addCreditUsage() value remains
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabaseUser, updateUser]);
 
   const logout = useCallback(async () => {
     await supabase.auth.signOut();
@@ -409,6 +455,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         supabaseUserId: supabaseUser?.id ?? null,
         updateUser,
         addCreditUsage,
+        refreshUsage,
         isLoaded,
         isLoadingProfile,
         logout,

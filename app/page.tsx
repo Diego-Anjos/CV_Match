@@ -1,32 +1,55 @@
 'use client';
 
-import React, { useActionState, useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Mail, Lock, ArrowRight, Loader2, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { LogoCVMatch } from './components/LogoCVMatch';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { signInAction, type AuthState } from '@/app/actions/auth';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-
-const initialState: AuthState = { error: '' };
+import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 function LoginPage() {
-  const [state, formAction, isPending] = useActionState(signInAction, initialState);
+  const router = useRouter();
   const searchParams = useSearchParams();
 
-  useEffect(() => {
-    if (searchParams.get('error') === 'link_invalido') {
-      // limpa o query param sem reload
-      window.history.replaceState({}, '', '/');
-    }
-  }, [searchParams]);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
 
   const [isRecoveringPassword, setIsRecoveringPassword] = useState(false);
   const [recoveryEmail, setRecoveryEmail] = useState('');
   const [recoveryLoading, setRecoveryLoading] = useState(false);
   const [recoverySuccess, setRecoverySuccess] = useState(false);
   const [recoveryError, setRecoveryError] = useState('');
+
+  async function handleLoginSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoginLoading(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithPassword({
+      email: loginEmail.trim().toLowerCase(),
+      password: loginPassword,
+    });
+    if (error) {
+      toast.error(getErrorMessage(error.message));
+      setLoginLoading(false);
+      return;
+    }
+    // router.refresh() invalida o cache do servidor e garante que o
+    // onAuthStateChange do UserContext dispare SIGNED_IN antes da navegação.
+    router.refresh();
+    router.push('/dashboard');
+  }
+
+  useEffect(() => {
+    if (searchParams.get('error') === 'link_invalido') {
+      toast.error('Link de recuperação inválido ou expirado. Solicite um novo link.');
+      window.history.replaceState({}, '', '/');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleRecoverySubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -36,13 +59,13 @@ function LoginPage() {
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
     const supabase = createClient();
     const { error } = await supabase.auth.resetPasswordForEmail(recoveryEmail, {
-      redirectTo: `${baseUrl}/update-password`,
+      redirectTo: `${baseUrl}/auth/callback?next=/update-password`,
     });
 
     setRecoveryLoading(false);
 
     if (error) {
-      setRecoveryError(error.message);
+      toast.error(getErrorMessage(error.message));
     } else {
       setRecoverySuccess(true);
       setTimeout(() => {
@@ -56,7 +79,6 @@ function LoginPage() {
   function handleBackToLogin() {
     setIsRecoveringPassword(false);
     setRecoveryEmail('');
-    setRecoveryError('');
     setRecoverySuccess(false);
   }
 
@@ -89,25 +111,9 @@ function LoginPage() {
                 >
                   Insira seu e-mail para receber o link de recuperação
                 </motion.p>
-              ) : (
-                <motion.p
-                  key="login-subtitle"
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 4 }}
-                  className="text-slate-500 text-sm mt-1 text-center"
-                >
-                  Entre para encontrar os melhores talentos
-                </motion.p>
-              )}
+              ) : null}
             </AnimatePresence>
           </div>
-
-          {searchParams.get('error') === 'link_invalido' && (
-            <div className="mb-5 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 font-medium text-center">
-              Link de recuperação inválido ou expirado. Solicite um novo link abaixo.
-            </div>
-          )}
 
           <AnimatePresence mode="wait">
             {/* ── RECOVERY MODE ── */}
@@ -192,15 +198,16 @@ function LoginPage() {
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.2 }}
               >
-                <form className="space-y-5" action={formAction}>
+                <form className="space-y-5" onSubmit={handleLoginSubmit}>
                   <div className="space-y-1">
                     <label className="text-sm font-medium text-slate-700 block">E-mail</label>
                     <div className="relative">
                       <Mail className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                       <input
                         type="email"
-                        name="email"
                         required
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
                         placeholder="seu@email.com"
                         className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
                       />
@@ -222,24 +229,21 @@ function LoginPage() {
                       <Lock className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                       <input
                         type="password"
-                        name="password"
                         required
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
                         placeholder="••••••••"
                         className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
                       />
                     </div>
                   </div>
 
-                  {state.error && (
-                    <p className="text-sm text-red-500 font-medium">{state.error}</p>
-                  )}
-
                   <button
                     type="submit"
-                    disabled={isPending}
+                    disabled={loginLoading}
                     className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold rounded-xl transition-all shadow-[0_4px_14px_rgba(16,185,129,0.2)] hover:shadow-[0_6px_20px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2 mt-6 disabled:opacity-70 disabled:cursor-not-allowed"
                   >
-                    {isPending ? (
+                    {loginLoading ? (
                       <>
                         <Loader2 className="w-5 h-5 animate-spin" />
                         Carregando...

@@ -6,7 +6,14 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code');
   const next = searchParams.get('next') ?? '/dashboard';
 
+  // Supabase envia ?error=access_denied quando o link expirou ou já foi usado
+  const errorParam = searchParams.get('error');
+  if (errorParam) {
+    return NextResponse.redirect(`${origin}/?error=link_invalido`);
+  }
+
   if (code) {
+    // Cria a resposta de redirect ANTES para poder injetar os cookies da sessão nela
     const response = NextResponse.redirect(`${origin}${next}`);
 
     const supabase = createServerClient(
@@ -18,6 +25,7 @@ export async function GET(request: NextRequest) {
             return request.cookies.getAll();
           },
           setAll(cookiesToSet) {
+            // Injeta os cookies de sessão diretamente na resposta de redirect
             cookiesToSet.forEach(({ name, value, options }) =>
               response.cookies.set(name, value, options)
             );
@@ -33,6 +41,6 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Code inválido ou ausente — redireciona para login com aviso
+  // Code inválido, ausente ou expirado
   return NextResponse.redirect(`${origin}/?error=link_invalido`);
 }

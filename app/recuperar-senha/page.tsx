@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { motion } from 'motion/react';
 import { Mail, ArrowRight, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react';
 import { LogoCVMatch } from '../components/LogoCVMatch';
@@ -11,11 +13,9 @@ export default function RecuperarSenhaPage() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [error, setError] = useState('');
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError('');
     setIsLoading(true);
 
     const supabase = createClient();
@@ -26,7 +26,7 @@ export default function RecuperarSenhaPage() {
     setIsLoading(false);
 
     if (resetError) {
-      setError(resetError.message);
+      toast.error(getErrorMessage(resetError.message));
     } else {
       setSuccess(true);
     }
@@ -91,10 +91,6 @@ export default function RecuperarSenhaPage() {
                   />
                 </div>
               </div>
-
-              {error && (
-                <p className="text-sm text-red-500 font-medium">{error}</p>
-              )}
 
               <button
                 type="submit"

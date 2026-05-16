@@ -3,6 +3,7 @@ import { Inter, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 import { UserProvider } from './contexts/UserContext';
 import { LanguageProvider } from './contexts/LanguageContext';
+import { Toaster } from 'sonner';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], variable: '--font-display' });
@@ -21,6 +22,7 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
             {children}
           </UserProvider>
         </LanguageProvider>
+        <Toaster richColors position="top-right" duration={4000} />
       </body>
     </html>
   );
