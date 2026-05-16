@@ -57,6 +57,19 @@ export async function GET(request: NextRequest) {
       }
     );
 
+    // Verifica se o usuário já possui uma sessão ativa antes de tentar trocar o code.
+    // Isso cobre o cenário em que o link foi pré-carregado pelo provedor de e-mail
+    // (o code já foi consumido), mas o usuário ainda tem uma sessão válida no browser.
+    const { data: sessionData } = await supabase.auth.getSession();
+    const sessionExistente = !!sessionData?.session;
+
+    console.log('[auth/callback] Sessão prévia detectada:', sessionExistente);
+
+    if (sessionExistente && isRecovery) {
+      console.log('[auth/callback] Sessão ativa encontrada em fluxo recovery — redirecionando sem exchange.');
+      return response;
+    }
+
     try {
       const { error } = await supabase.auth.exchangeCodeForSession(code);
 
@@ -66,15 +79,28 @@ export async function GET(request: NextRequest) {
         return response;
       }
 
-      // Falha conhecida do Supabase: redireciona para destino diferenciado
-      // para confirmar que o erro veio da validação do token
-      console.error('[auth/callback] Erro no exchangeCodeForSession:', error.message, error);
+      console.error('[auth/callback] Erro crítico no exchange:', error.message);
+      console.error('[auth/callback] Detalhes do erro:', error);
+
+      // Se o exchange falhou mas uma sessão foi estabelecida por outra via
+      // (ex: o code foi consumido pelo pré-carregamento do e-mail e o cookie
+      // persistiu na mesma origem), ainda assim encaminha para /update-password.
+      if (isRecovery) {
+        const { data: sessionAposErro } = await supabase.auth.getSession();
+        if (sessionAposErro?.session) {
+          console.log('[auth/callback] Sessão encontrada após erro no exchange — prosseguindo para update-password.');
+          return response;
+        }
+      }
+
       const errorDestino = isRecovery
         ? `${baseUrl}/recuperar-senha?error=token_falhou`
         : `${baseUrl}/?error=link_invalido`;
       return NextResponse.redirect(errorDestino);
     } catch (err) {
-      console.error('[auth/callback] Exceção inesperada no exchangeCodeForSession:', err);
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('[auth/callback] Erro crítico no exchange:', message);
+      console.error('[auth/callback] Exceção completa:', err);
       const errorDestino = isRecovery
         ? `${baseUrl}/recuperar-senha?error=token_falhou`
         : `${baseUrl}/?error=link_invalido`;
