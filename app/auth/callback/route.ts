@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
+        cookieOptions: { path: '/' },
         cookies: {
           getAll() {
             return request.cookies.getAll();
@@ -81,14 +82,13 @@ export async function GET(request: NextRequest) {
         ? `${baseUrl}/recuperar-senha?error=token_falhou`
         : `${baseUrl}/?error=link_invalido`;
       return NextResponse.redirect(errorDestino);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error('[auth/callback] Erro crítico no exchange:', message);
-      console.error('[auth/callback] Exceção completa:', err);
-      const errorDestino = isRecovery
-        ? `${baseUrl}/recuperar-senha?error=token_falhou`
-        : `${baseUrl}/?error=link_invalido`;
-      return NextResponse.redirect(errorDestino);
+    } catch (error: unknown) {
+      console.error('[auth/callback] Erro crítico no exchange:', error);
+      return NextResponse.json({
+        erro: 'Falha no exchange',
+        mensagem: error instanceof Error ? error.message : String(error),
+        detalhes: error,
+      }, { status: 400 });
     }
   }
 
