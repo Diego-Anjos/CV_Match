@@ -16,7 +16,6 @@ export async function GET(request: NextRequest) {
   const response = NextResponse.redirect(redirectUrl);
 
   if (code) {
-    // CORREÇÃO AQUI: Dando await na Promise de cookies para o Next.js moderno
     const cookieStore = await cookies();
     
     const supabase = createServerClient(
@@ -53,11 +52,8 @@ export async function GET(request: NextRequest) {
       return response;
     } catch (error: any) {
       console.error('[auth/callback] Erro crítico no exchange:', error);
-      return NextResponse.json({ 
-        erro: 'Falha no exchange', 
-        mensagem: error?.message || error,
-        detalhes: error
-      }, { status: 400 });
+      // Retorno corrigido sem o lixo de sintaxe do JSON antigo
+      return NextResponse.redirect(`${baseUrl}/recuperar-senha?error=token_falhou`);
     }
   }
 
