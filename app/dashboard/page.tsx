@@ -761,7 +761,7 @@ function NewOptimizationView({ theme, setActiveView, language, setGeneratedCvDat
                             type="text" 
                             value={exp.cargo}
                             onChange={(e) => handleExperienceChange(index, 'cargo', e.target.value)}
-                            className={`w-full p-2 text-sm rounded-lg border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all text-gray-900 placeholder-gray-400 ${theme === 'dark' ? 'bg-slate-800 border-slate-600' : 'bg-white border-slate-300'}`}
+                            className={`w-full p-2 text-sm rounded-lg border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-gray-900 placeholder-gray-400'}`}
                           />
                         </div>
                         <div>
@@ -770,7 +770,7 @@ function NewOptimizationView({ theme, setActiveView, language, setGeneratedCvDat
                             type="text" 
                             value={exp.empresa}
                             onChange={(e) => handleExperienceChange(index, 'empresa', e.target.value)}
-                            className={`w-full p-2 text-sm rounded-lg border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all text-gray-900 placeholder-gray-400 ${theme === 'dark' ? 'bg-slate-800 border-slate-600' : 'bg-white border-slate-300'}`}
+                            className={`w-full p-2 text-sm rounded-lg border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-gray-900 placeholder-gray-400'}`}
                           />
                         </div>
                       </div>
@@ -780,7 +780,7 @@ function NewOptimizationView({ theme, setActiveView, language, setGeneratedCvDat
                           rows={3}
                           value={exp.descricao}
                           onChange={(e) => handleExperienceChange(index, 'descricao', e.target.value)}
-                          className={`w-full p-2 text-sm rounded-lg border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all resize-none text-gray-900 placeholder-gray-400 ${theme === 'dark' ? 'bg-slate-800 border-slate-600' : 'bg-white border-slate-300'}`}
+                          className={`w-full p-2 text-sm rounded-lg border focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all resize-none ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-gray-900 placeholder-gray-400'}`}
                         />
                       </div>
                     </div>
