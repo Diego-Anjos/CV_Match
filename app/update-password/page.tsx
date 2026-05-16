@@ -21,42 +21,54 @@ export default function UpdatePasswordPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let sessionResolved = false;
+
+    const markReady = () => {
+      sessionResolved = true;
+      setIsSessionReady(true);
+    };
+
+    // Listener registrado ANTES do setup para não perder eventos assíncronos
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+        markReady();
+      }
+    });
+
     const setupSession = async () => {
       // Fluxo PKCE: o /auth/callback já fez o exchangeCodeForSession,
       // mas garantimos a sessão caso a página seja acessada com ?code= diretamente
-      const searchParams = new URLSearchParams(window.location.search);
-      const code = searchParams.get('code');
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
 
       if (code) {
         await supabase.auth.exchangeCodeForSession(code);
-        // Remove o code da URL sem recarregar a página
         window.history.replaceState({}, '', '/update-password');
-        setIsSessionReady(true);
+        markReady();
         return;
       }
 
-      // Fluxo Implicit (hash) ou sessão já estabelecida pelo callback
+      // Sessão já estabelecida pelo /auth/callback via cookies
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        setIsSessionReady(true);
+        markReady();
+        return;
       }
+
+      // Nenhuma sessão encontrada — aguarda eventos async por 8s antes de redirecionar
+      setTimeout(() => {
+        if (!sessionResolved) {
+          router.replace('/?error=link_invalido');
+        }
+      }, 8000);
     };
 
     setupSession();
 
-    // Listener para capturar o evento de recuperação (ambos os fluxos)
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event) => {
-        if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
-          setIsSessionReady(true);
-        }
-      }
-    );
-
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, [supabase, router]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

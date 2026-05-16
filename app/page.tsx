@@ -56,7 +56,7 @@ function LoginPage() {
     setRecoveryLoading(true);
     setRecoveryError('');
 
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
     const supabase = createClient();
     const { error } = await supabase.auth.resetPasswordForEmail(recoveryEmail, {
       redirectTo: `${baseUrl}/auth/callback?next=/update-password`,
