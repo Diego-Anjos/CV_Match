@@ -6,5 +6,12 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*'],
+  matcher: [
+    // Rotas protegidas que exigem sessão ativa
+    '/dashboard/:path*',
+    // Rotas de auth que precisam que o middleware processe/propague cookies
+    // (sem redirecionamento — a lógica pública é tratada em updateSession)
+    '/update-password/:path*',
+    '/update-password',
+  ],
 };

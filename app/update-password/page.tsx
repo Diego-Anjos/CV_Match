@@ -12,6 +12,7 @@ export default function UpdatePasswordPage() {
   const supabase = useRef(createClient()).current;
 
   const [isSessionReady, setIsSessionReady] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNew, setShowNew] = useState(false);
@@ -22,50 +23,94 @@ export default function UpdatePasswordPage() {
 
   useEffect(() => {
     let sessionResolved = false;
+    let redirectTimer: ReturnType<typeof setTimeout> | null = null;
 
     const markReady = () => {
+      if (sessionResolved) return;
       sessionResolved = true;
+      if (redirectTimer) clearTimeout(redirectTimer);
+      setIsCheckingSession(false);
       setIsSessionReady(true);
     };
 
-    // Listener registrado ANTES do setup para não perder eventos assíncronos
+    const markFailed = () => {
+      if (sessionResolved) return;
+      sessionResolved = true;
+      setIsCheckingSession(false);
+      router.replace('/?error=link_invalido');
+    };
+
+    // onAuthStateChange registrado ANTES do setup para não perder eventos async.
+    // No fluxo PKCE via SSR, PASSWORD_RECOVERY pode não disparar porque a sessão
+    // já foi estabelecida server-side. SIGNED_IN é o evento mais confiável aqui.
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      console.log('[update-password] onAuthStateChange evento:', event);
       if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
         markReady();
       }
     });
 
     const setupSession = async () => {
-      // Fluxo PKCE: o /auth/callback já fez o exchangeCodeForSession,
-      // mas garantimos a sessão caso a página seja acessada com ?code= diretamente
+      // Fluxo PKCE direto: página acessada com ?code= sem passar pelo /auth/callback
       const params = new URLSearchParams(window.location.search);
       const code = params.get('code');
 
       if (code) {
-        await supabase.auth.exchangeCodeForSession(code);
+        console.log('[update-password] Código PKCE encontrado na URL — trocando sessão no cliente');
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
         window.history.replaceState({}, '', '/update-password');
+        if (!error) { markReady(); return; }
+        console.error('[update-password] Falha no exchange client-side:', error.message);
+        markFailed();
+        return;
+      }
+
+      // Tentativa 1: getUser() — chamada de rede, autoritativa.
+      // Mais confiável que getSession() que pode ler um cache vazio logo após o redirect.
+      console.log('[update-password] Verificando usuário via getUser() (rede)...');
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+      if (user && !userError) {
+        console.log('[update-password] Usuário confirmado via getUser():', user.email);
         markReady();
         return;
       }
 
-      // Sessão já estabelecida pelo /auth/callback via cookies
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        markReady();
-        return;
-      }
+      console.warn('[update-password] getUser() não encontrou usuário. Erro:', userError?.message ?? 'nenhum');
 
-      // Nenhuma sessão encontrada — aguarda eventos async por 8s antes de redirecionar
-      setTimeout(() => {
-        if (!sessionResolved) {
-          router.replace('/?error=link_invalido');
+      // Tentativa 2: retry com backoff — cookies podem demorar alguns ms para propagar
+      // entre o redirect do callback e o primeiro render do cliente.
+      const retryIntervals = [500, 1000, 2000, 3000];
+      for (const delay of retryIntervals) {
+        if (sessionResolved) return;
+        await new Promise((res) => setTimeout(res, delay));
+        if (sessionResolved) return;
+
+        console.log(`[update-password] Retry após ${delay}ms — chamando getUser() novamente...`);
+        const { data: { user: retryUser } } = await supabase.auth.getUser();
+        if (retryUser) {
+          console.log('[update-password] Usuário encontrado no retry:', retryUser.email);
+          markReady();
+          return;
         }
-      }, 8000);
+      }
+
+      // Todos os retries falharam — aguarda mais 3s para o onAuthStateChange disparar
+      // (caso o evento ainda esteja em trânsito) antes de redirecionar definitivamente.
+      console.warn('[update-password] Todos os retries falharam. Aguardando evento async por 3s...');
+      redirectTimer = setTimeout(() => {
+        if (!sessionResolved) {
+          console.error('[update-password] Sessão não resolvida após todos os retries — redirecionando para /?error=link_invalido');
+          markFailed();
+        }
+      }, 3000);
     };
 
     setupSession();
 
     return () => {
+      sessionResolved = true; // evita redirect após desmontagem
+      if (redirectTimer) clearTimeout(redirectTimer);
       authListener.subscription.unsubscribe();
     };
   }, [supabase, router]);
@@ -96,6 +141,38 @@ export default function UpdatePasswordPage() {
         router.push('/dashboard');
       }, 2500);
     }
+  }
+
+  // Tela de loading enquanto a sessão ainda não foi verificada.
+  // Evita que o formulário apareça "piscado" ou que um redirect agressivo
+  // expulse o usuário antes dos cookies do callback serem lidos.
+  if (isCheckingSession) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-sans">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[50%] rounded-full bg-emerald-500/10 blur-[120px]" />
+          <div className="absolute -bottom-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-blue-500/10 blur-[120px]" />
+        </div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-10 flex flex-col items-center gap-6 relative z-10"
+        >
+          <LogoCVMatch className="w-14 h-14 text-emerald-500" />
+          <div className="flex flex-col items-center gap-2 text-center">
+            <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+            <p className="text-slate-700 font-semibold text-lg">Validando seu link seguro…</p>
+            <p className="text-slate-400 text-sm">Isso leva apenas alguns segundos.</p>
+          </div>
+          {/* Skeleton do formulário */}
+          <div className="w-full space-y-3 mt-2">
+            <div className="h-11 w-full rounded-xl bg-slate-100 animate-pulse" />
+            <div className="h-11 w-full rounded-xl bg-slate-100 animate-pulse" />
+            <div className="h-12 w-full rounded-xl bg-emerald-100 animate-pulse mt-2" />
+          </div>
+        </motion.div>
+      </div>
+    );
   }
 
   return (

@@ -33,6 +33,10 @@ export async function GET(request: NextRequest) {
       ? `${baseUrl}/update-password`
       : `${baseUrl}${next}`;
 
+    console.log('[auth/callback] Fluxo Recovery:', isRecovery);
+    console.log('[auth/callback] URL de redirecionamento calculada:', redirectUrl);
+    console.log('[auth/callback] Parâmetros recebidos:', { code: code?.slice(0, 8) + '...', type, next: searchParams.get('next') });
+
     const response = NextResponse.redirect(redirectUrl);
 
     const supabase = createServerClient(
@@ -53,13 +57,32 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    try {
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
 
-    if (!error) {
-      return response;
+      console.log('[auth/callback] Resultado do exchangeCodeForSession — error:', error ?? 'nenhum');
+
+      if (!error) {
+        return response;
+      }
+
+      // Falha conhecida do Supabase: redireciona para destino diferenciado
+      // para confirmar que o erro veio da validação do token
+      console.error('[auth/callback] Erro no exchangeCodeForSession:', error.message, error);
+      const errorDestino = isRecovery
+        ? `${baseUrl}/recuperar-senha?error=token_falhou`
+        : `${baseUrl}/?error=link_invalido`;
+      return NextResponse.redirect(errorDestino);
+    } catch (err) {
+      console.error('[auth/callback] Exceção inesperada no exchangeCodeForSession:', err);
+      const errorDestino = isRecovery
+        ? `${baseUrl}/recuperar-senha?error=token_falhou`
+        : `${baseUrl}/?error=link_invalido`;
+      return NextResponse.redirect(errorDestino);
     }
   }
 
-  // Code inválido, ausente ou expirado
+  // Code ausente
+  console.warn('[auth/callback] Nenhum code recebido na URL. Params:', Object.fromEntries(searchParams.entries()));
   return NextResponse.redirect(`${baseUrl}/?error=link_invalido`);
 }
