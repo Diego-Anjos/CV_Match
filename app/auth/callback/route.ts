@@ -35,7 +35,11 @@ export async function GET(request: NextRequest) {
             response.cookies.delete({ name, ...options });
           },
         },
-        cookieOptions: { path: '/' }
+        cookieOptions: {
+          path: '/',
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax'
+        }
       }
     );
 
