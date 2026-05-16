@@ -57,17 +57,12 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    // Verifica se o usuário já possui uma sessão ativa antes de tentar trocar o code.
-    // Isso cobre o cenário em que o link foi pré-carregado pelo provedor de e-mail
-    // (o code já foi consumido), mas o usuário ainda tem uma sessão válida no browser.
-    const { data: sessionData } = await supabase.auth.getSession();
-    const sessionExistente = !!sessionData?.session;
-
-    console.log('[auth/callback] Sessão prévia detectada:', sessionExistente);
-
-    if (sessionExistente && isRecovery) {
-      console.log('[auth/callback] Sessão ativa encontrada em fluxo recovery — redirecionando sem exchange.');
-      return response;
+    // Em fluxo de recovery, destrói qualquer sessão anterior antes do exchange.
+    // Isso evita que uma sessão antiga de outro teste seja reaproveitada, garantindo
+    // que o Supabase autentique estritamente o usuário do link recebido por e-mail.
+    if (isRecovery) {
+      await supabase.auth.signOut();
+      console.log('[auth/callback] Sessão anterior encerrada antes do exchange (fluxo recovery).');
     }
 
     try {
@@ -81,17 +76,6 @@ export async function GET(request: NextRequest) {
 
       console.error('[auth/callback] Erro crítico no exchange:', error.message);
       console.error('[auth/callback] Detalhes do erro:', error);
-
-      // Se o exchange falhou mas uma sessão foi estabelecida por outra via
-      // (ex: o code foi consumido pelo pré-carregamento do e-mail e o cookie
-      // persistiu na mesma origem), ainda assim encaminha para /update-password.
-      if (isRecovery) {
-        const { data: sessionAposErro } = await supabase.auth.getSession();
-        if (sessionAposErro?.session) {
-          console.log('[auth/callback] Sessão encontrada após erro no exchange — prosseguindo para update-password.');
-          return response;
-        }
-      }
 
       const errorDestino = isRecovery
         ? `${baseUrl}/recuperar-senha?error=token_falhou`
