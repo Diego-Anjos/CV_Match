@@ -18,10 +18,10 @@ export default function RecuperarSenhaPage() {
     e.preventDefault();
     setIsLoading(true);
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
     const supabase = createClient();
+    const redirectTo = `${window.location.origin}/auth/callback?next=/update-password`;
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${appUrl}/auth/callback?next=/update-password`,
+      redirectTo,
     });
 
     setIsLoading(false);
