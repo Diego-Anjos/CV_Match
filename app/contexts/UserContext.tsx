@@ -211,7 +211,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         const { data } = await supabase
           .from('subscriptions')
           .select('status, plan_type, current_period_end')
-          .eq('id', sbUser.id)
+          .eq('user_id', sbUser.id)
           .maybeSingle();
 
         const stored = loadStoredUserData(sbUser.id);
@@ -372,7 +372,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const { data, error, status } = await supabase
       .from('subscriptions')
       .update({ status: 'canceled' })
-      .eq('id', userId)
+      .eq('user_id', userId)
       .select();
 
     console.log("Status da resposta Supabase:", status);
@@ -398,25 +398,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const activateSubscription = useCallback(
     async ({ planType, paymentMethod, cardLastFour }: ActivateSubscriptionParams) => {
-      if (!supabaseUser) throw new Error('Usuário não autenticado.');
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id ?? supabaseUser?.id;
+
+      if (!userId) throw new Error('Usuário não autenticado.');
 
       const now = new Date();
       const periodEnd =
         planType === 'annual'
           ? new Date(now.getFullYear() + 1, now.getMonth(), now.getDate())
           : new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
-
-      const { error } = await supabase.from('subscriptions').upsert(
-        {
-          id: supabaseUser.id,
-          status: 'active',
-          plan_type: planType,
-          current_period_end: periodEnd.toISOString(),
-        },
-        { onConflict: 'id' }
-      );
-
-      if (error) throw error;
 
       const renovacao = periodEnd.toLocaleDateString('pt-BR', {
         day: 'numeric',

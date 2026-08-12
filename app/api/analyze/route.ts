@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
 export async function POST(request: Request) {
-  // Validate environment variable before any work
   const apiKey = process.env.GEMINI_API_KEY || '';
   if (!apiKey) {
     console.error('[API_ANALYZE_ERROR]: GEMINI_API_KEY não está configurada no servidor.');
@@ -16,10 +15,12 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { baseCv, jobTitle, jobDescription, companyName, userName } = body;
 
-    console.log('[API_ANALYZE] Payload recebido:', { temCV: !!baseCv, temVaga: !!jobDescription, userName });
-    console.log('[DEBUG] Iniciando IA com a chave:', process.env.GEMINI_API_KEY?.substring(0, 15) + '...');
+    console.log('[API_ANALYZE] Payload recebido:', {
+      temCV: !!baseCv,
+      temVaga: !!jobDescription,
+      userName,
+    });
 
-    // Server-side guard: reject obviously invalid inputs before spending any API quota
     const hasRealContent = (text: string, minLen: number, minWords: number) => {
       const trimmed = (text || '').trim();
       if (trimmed.length < minLen) return false;
@@ -87,23 +88,22 @@ Currículo do Candidato:
 ${JSON.stringify(baseCv, null, 2)}
 `;
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
+    const ai = new GoogleGenAI({ apiKey });
+    const result = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      systemInstruction,
-      generationConfig: {
+      contents: prompt,
+      config: {
+        systemInstruction,
         responseMimeType: 'application/json',
       },
     });
 
-    const result = await model.generateContent(prompt);
-    const rawText = result.response.text();
+    const rawText = result.text;
 
     if (!rawText) {
       throw new Error('A resposta do Gemini não contém texto.');
     }
 
-    // Strip markdown code fences that some models add despite the instruction
     const sanitized = rawText
       .replace(/^```(?:json)?\s*/i, '')
       .replace(/\s*```$/i, '')
@@ -119,7 +119,6 @@ ${JSON.stringify(baseCv, null, 2)}
     }
 
     return NextResponse.json(parsedData, { status: 200 });
-
   } catch (error: any) {
     console.error('[API_ANALYZE_ERROR]:', error);
     return NextResponse.json(

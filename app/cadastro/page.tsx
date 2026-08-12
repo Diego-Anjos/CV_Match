@@ -2,7 +2,7 @@
 
 import React, { useActionState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Mail, Lock, ArrowRight, User, Loader2 } from 'lucide-react';
+import { Mail, Lock, ArrowRight, User, Loader2, AlertCircle } from 'lucide-react';
 import { LogoCVMatch } from '../components/LogoCVMatch';
 import Link from 'next/link';
 import { signUpAction, type AuthState } from '@/app/actions/auth';
@@ -14,9 +14,11 @@ const initialState: AuthState = { error: '' };
 export default function CadastroPage() {
   const [state, formAction, isPending] = useActionState(signUpAction, initialState);
 
+  const displayError = state.error ? getErrorMessage(state.error) : '';
+
   useEffect(() => {
     if (state.error) toast.error(getErrorMessage(state.error));
-  }, [state.error]);
+  }, [state.error, state.ts]);
 
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-sans relative overflow-hidden">
@@ -119,9 +121,20 @@ export default function CadastroPage() {
               </label>
             </div>
 
+            {displayError && (
+              <div
+                role="alert"
+                className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700"
+              >
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <p>{displayError}</p>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={isPending}
+              aria-busy={isPending}
               className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold rounded-xl transition-all shadow-[0_4px_14px_rgba(16,185,129,0.2)] hover:shadow-[0_6px_20px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2 mt-6 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isPending ? (

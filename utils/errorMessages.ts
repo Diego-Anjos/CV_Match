@@ -10,7 +10,11 @@ const errorMap: Record<string, string> = {
   'Password should be at least 6 characters': 'A senha deve ter pelo menos 6 caracteres.',
   'Signup is disabled': 'Cadastros estão temporariamente desativados.',
   'Email rate limit exceeded': 'Muitas tentativas. Aguarde alguns minutos e tente novamente.',
-  'over_email_send_rate_limit': 'Muitas tentativas de envio. Aguarde alguns minutos.',
+  'over_email_send_rate_limit': 'Muitas tentativas de envio de e-mail. Aguarde alguns minutos e tente novamente.',
+  'over_request_rate_limit': 'Muitas tentativas. Aguarde alguns minutos e tente novamente.',
+  'rate_limit': 'Muitas tentativas. Aguarde alguns minutos e tente novamente.',
+  'Too many requests': 'Muitas tentativas. Aguarde alguns minutos e tente novamente.',
+  '429': 'Muitas tentativas. Aguarde alguns minutos e tente novamente.',
   'For security purposes, you can only request this once every 60 seconds':
     'Por segurança, aguarde 60 segundos antes de solicitar novamente.',
   'Token has expired or is invalid': 'O link expirou ou é inválido. Solicite um novo.',
@@ -30,6 +34,10 @@ export function getErrorMessage(raw: string | undefined | null): string {
 
   for (const [key, value] of Object.entries(errorMap)) {
     if (raw.toLowerCase().includes(key.toLowerCase())) return value;
+  }
+
+  if (/rate\s*limit/i.test(raw) || /too many/i.test(raw)) {
+    return 'Muitas tentativas. Aguarde alguns minutos e tente novamente.';
   }
 
   return raw;

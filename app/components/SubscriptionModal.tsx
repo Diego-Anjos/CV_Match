@@ -4,6 +4,7 @@ import {
   X, Zap, BarChart, Star, Check, ArrowLeft, CreditCard, QrCode, CheckCircle, Loader2 
 } from 'lucide-react';
 import { useUser } from '../contexts/UserContext';
+import { createClient } from '@/utils/supabase/client';
 
 interface SubscriptionModalProps {
   isOpen: boolean;
@@ -13,7 +14,7 @@ interface SubscriptionModalProps {
 }
 
 export function SubscriptionModal({ isOpen, onClose, onCancelRequest, initialStep }: SubscriptionModalProps) {
-  const { user, isPro, activateSubscription } = useUser();
+  const { user, isPro, activateSubscription, supabaseUserId } = useUser();
   const [checkoutStep, setCheckoutStep] = useState<'plans' | 'payment' | 'success'>('plans');
   const [selectedPlan, setSelectedPlan] = useState<'mensal' | 'anual'>('mensal');
   const [paymentMethod, setPaymentMethod] = useState<'credit_card' | 'pix'>('credit_card');
@@ -301,8 +302,36 @@ export function SubscriptionModal({ isOpen, onClose, onCancelRequest, initialSte
                   console.log('Tentando ativar plano...', { selectedPlan, paymentMethod });
                   setIsProcessingPayment(true);
                   try {
+                    const supabase = createClient();
+                    const { data: { session } } = await supabase.auth.getSession();
+                    const userId = session?.user?.id ?? supabaseUserId;
+
+                    if (!userId) {
+                      throw new Error('Sessão inválida: usuário não autenticado.');
+                    }
+
                     const planToDatabase = selectedPlan === 'anual' ? 'annual' : 'monthly';
-                    console.log('Payload para o banco:', { planToDatabase, paymentMethod });
+                    const now = new Date();
+                    const periodEnd =
+                      planToDatabase === 'annual'
+                        ? new Date(now.getFullYear() + 1, now.getMonth(), now.getDate())
+                        : new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
+
+                    const payload = {
+                      user_id: userId,
+                      plan_type: planToDatabase,
+                      status: 'active',
+                      current_period_end: periodEnd.toISOString(),
+                    };
+
+                    console.log('Payload para o banco:', payload);
+
+                    const { error } = await supabase
+                      .from('subscriptions')
+                      .upsert(payload, { onConflict: 'user_id' });
+
+                    if (error) throw error;
+
                     await activateSubscription({
                       planType: planToDatabase,
                       paymentMethod,

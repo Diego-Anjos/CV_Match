@@ -5,16 +5,16 @@ import { createClient } from '@/utils/supabase/client';
 import { useUser } from '../contexts/UserContext';
 
 export interface SubscriptionRow {
-  id: string;
+  user_id: string;
   status: 'active' | 'canceled' | 'expired';
-  plan_type: 'mensal' | 'anual';
+  plan_type: 'monthly' | 'annual' | 'mensal' | 'anual';
   current_period_end: string;
 }
 
 export interface UseSubscriptionResult {
   subscription: SubscriptionRow | null;
   isActive: boolean;
-  planType: 'mensal' | 'anual' | null;
+  planType: 'mensal' | 'anual' | 'monthly' | 'annual' | null;
   currentPeriodEnd: Date | null;
   isLoading: boolean;
   refresh: () => Promise<void>;
@@ -36,8 +36,8 @@ export function useSubscription(): UseSubscriptionResult {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('subscriptions')
-      .select('id, status, plan_type, current_period_end')
-      .eq('id', supabaseUserId)
+      .select('user_id, status, plan_type, current_period_end')
+      .eq('user_id', supabaseUserId)
       .maybeSingle();
 
     if (!error && data) {
